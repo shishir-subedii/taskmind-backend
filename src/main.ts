@@ -27,8 +27,8 @@ async function bootstrap() {
   // Global Error Handler
   app.useGlobalFilters(new GlobalExceptionFilter());
   const config = new DocumentBuilder()
-    .setTitle('Docs for XYZ application')
-    .setDescription('API documentation for XYZ application')
+    .setTitle('Docs for TaskMind application')
+    .setDescription('API documentation for TaskMind application')
     .setVersion('1.0')
     .addBearerAuth(
       {
@@ -40,6 +40,6 @@ async function bootstrap() {
     .build();
   const documentFactory = () => SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('swagger', app, documentFactory);
-  await app.listen(process.env.PORT ?? 3002);
+  await app.listen(process.env.PORT ?? 3003);
 }
 bootstrap();
