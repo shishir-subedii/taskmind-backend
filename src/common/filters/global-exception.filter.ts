@@ -33,7 +33,7 @@
 //         });
 //     }
 // }
-  
+
 
 import {
     ExceptionFilter,
@@ -43,6 +43,7 @@ import {
     HttpStatus,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
+import { isProd } from 'src/common/utils/checkMode';
 
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
@@ -51,6 +52,9 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         const response = ctx.getResponse<Response>();
         const request = ctx.getRequest<Request>();
 
+        if(!isProd()){
+            console.error('Exception caught by GlobalExceptionFilter:', exception);
+        }
         const status =
             exception instanceof HttpException
                 ? exception.getStatus()
@@ -72,6 +76,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
             statusCode: status,
             path: request.url,
             timestamp: new Date().toISOString(),
+            error: message,
             message: typeof message === 'string' ? message : (message as any).message || 'An error occurred',
             data: null,
         });

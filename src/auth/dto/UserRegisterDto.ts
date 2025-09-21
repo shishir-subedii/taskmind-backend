@@ -6,11 +6,7 @@ export class UserRegisterDto {
     @IsString()
     name: string;
 
-    @ApiProperty({example: 'user'})
-    @IsEnum(['user', 'admin'])
-    role: 'user' | 'admin' = 'user'; // Default role is 'user'
-
-    @ApiProperty({ example: 'user@example.com' })
+    @ApiProperty({ example: 'shishirsubedi116@gmail.com' })
     @IsEmail()
     email: string;
 

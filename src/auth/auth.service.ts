@@ -1,5 +1,7 @@
 import {
     BadRequestException,
+    forwardRef,
+    Inject,
     Injectable,
     InternalServerErrorException,
 } from '@nestjs/common';
@@ -13,7 +15,11 @@ import { loginResponseType } from 'src/common/types/auth.types';
 
 @Injectable()
 export class AuthService {
-    constructor(private userService: UserService, private jwt: JwtService) { }
+    constructor(
+        @Inject(forwardRef(() => UserService))
+        private userService: UserService,
+        private jwt: JwtService
+    ) { }
 
     async register(user: UserRegisterDto) {
         if (user.password !== user.confirmPassword) {
@@ -30,6 +36,10 @@ export class AuthService {
 
         const user = await this.userService.findCompleteProfileByEmail(email);
         if (!user) {
+            throw new BadRequestException('Invalid credentials');
+        }
+
+        if (!user.password) {
             throw new BadRequestException('Invalid credentials');
         }
 
@@ -53,10 +63,34 @@ export class AuthService {
         };
     }
 
+    async verifySignupOtp(token: string, otp: string) {
+        const payload: { id: string; email: string; role: string } =
+            this.jwt.verify(token, {
+                secret: process.env.JWT_ACCESS_SECRET,
+            });
+        return await this.userService.verifySignupOtp(payload.email, otp);
+
+    }
+
     async logout(email: string, token: string) {
         // ✅ Remove only the current token (per-session logout)
         await this.userService.removeAccessToken(email, token);
     }
+
+    async logoutAllSessions(email: string, password: string) {
+        const user = await this.userService.findCompleteProfileByEmail(email);
+        if (!user) {
+            throw new BadRequestException('User not found');
+        }
+
+        const isPasswordValid = await bcrypt.compare(password, user.password!);
+        if (!isPasswordValid) {
+            throw new BadRequestException('Invalid password');
+        }
+
+        await this.userService.removeAllAccessTokens(email);
+    }
+
 
     async genTokens(id: string, email: string, role: string) {
         const accessToken = this.jwt.sign(
