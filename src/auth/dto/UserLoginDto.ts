@@ -3,7 +3,7 @@ import { IsEmail, IsString, MinLength } from 'class-validator';
 
 export class UserLoginDto {
 
-    @ApiProperty({ example: 'user@example.com' })
+    @ApiProperty({ example: 'shishirsubedi116@gmail.com' })
     @IsEmail({}, { message: 'Invalid email format' })
     email: string;
 

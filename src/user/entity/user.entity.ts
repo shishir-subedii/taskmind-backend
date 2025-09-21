@@ -1,35 +1,56 @@
-// users/user.entity.ts
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import {
+    Entity,
+    Column,
+    PrimaryGeneratedColumn,
+    CreateDateColumn,
+    UpdateDateColumn,
+    OneToMany,
+} from 'typeorm';
+
+import { UserRole } from 'src/common/enums/auth-roles.enum';
 
 @Entity('users')
 export class User {
-    @PrimaryGeneratedColumn("uuid")
+    @PrimaryGeneratedColumn('uuid')
     id: string;
 
-    @Column({ unique: true })
+    @Column({ type: 'varchar', unique: true })
     email: string;
 
-    @Column()
-    name: string;
+    @Column({ type: 'varchar', nullable: true })
+    name: string | null;
 
-    @Column({ select: false }) //we use select: false to avoid returning password in queries
-    password: string;
+    @Column({ type: 'varchar', select: false, nullable: true })
+    password: string | null;
 
-    @Column('text', { array: true, nullable: true, default: () => 'ARRAY[]::TEXT[]' })
-    accessTokens: string[];
+    @Column({
+        type: 'text',
+        array: true,
+        nullable: true,
+        select: false,
+        default: () => 'ARRAY[]::TEXT[]',
+    })
+    accessTokens: string[] | null;
 
+    @Column({ type: 'boolean', default: false })
+    isVerified: boolean;
 
-    //find a better way to handle roles
+    @Column({ type: 'varchar', nullable: true })
+    otp: string | null;
+
+    @Column({ type: 'timestamptz', nullable: true })
+    otpExpiry: Date | null;
+
     @Column({
         type: 'enum',
-        enum: ['user', 'admin'],
-        default: 'user',
+        enum: UserRole,
+        default: UserRole.USER,
     })
-    role: 'user' | 'admin';
+    role: UserRole;
 
-    @CreateDateColumn()
+    @CreateDateColumn({ type: 'timestamptz' })
     createdAt: Date;
 
-    @UpdateDateColumn()
+    @UpdateDateColumn({ type: 'timestamptz' })
     updatedAt: Date;
 }

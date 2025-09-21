@@ -1,11 +1,13 @@
-import { Body, Controller, Get, HttpCode, Post, Req, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, HttpCode, Patch, Post, Req, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { ApiOperation, ApiResponse, ApiBadRequestResponse, ApiBody, ApiParam, ApiBearerAuth } from '@nestjs/swagger';
 import { UserRegisterDto } from './dto/UserRegisterDto';
 import { UserLoginDto } from './dto/UserLoginDto';
 import { JwtAuthGuard } from 'src/common/auth/AuthGuard';
-import { Roles } from 'src/common/auth/AuthRoles';
 import { changePasswordDto } from './dto/ChangePasswordDto';
+import { VerifyOtpDto } from './dto/VerifyOtp.dto';
+import { userPayloadType } from 'src/common/types/auth.types';
+import { LogOutAllDto } from './dto/LogoutAll.Dto';
 
 @Controller('auth')
 export class AuthController {
@@ -33,8 +35,8 @@ export class AuthController {
   async register(@Body() userData: UserRegisterDto) {
     const user = await this.authService.register(userData);
     return {
-      // success: true,
-      message: 'User registered successfully',
+      success: true,
+      message: user.message ? user.message : 'Registration successful. Please check your email for verification.',
       data: user,
     };
   }
@@ -66,6 +68,31 @@ export class AuthController {
       data: responseData
     };
   }
+
+  //verify signup OTP
+  @ApiOperation({ summary: 'Verify signup OTP' })
+  @ApiResponse({
+    status: 200,
+    description: 'OTP verified successfully',
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid OTP',
+  })
+  @ApiBody({
+    type: VerifyOtpDto,
+  })
+  @Post('verify-otp')
+  async verifyOtp(@Body() verifyOtpDto: VerifyOtpDto) {
+    const isValid = await this.authService.verifySignupOtp(verifyOtpDto.token, verifyOtpDto.otp);
+    if (!isValid) {
+      throw new BadRequestException('Invalid OTP');
+    }
+    return {
+      // success: true,
+      message: 'OTP verified successfully',
+    };
+  }
+
   /*
   Logout
   */
@@ -80,7 +107,6 @@ export class AuthController {
   })
   @Get('logout')
   @UseGuards(JwtAuthGuard)
-  @Roles('user', 'admin')
   async logout(@Req() req: Request) {
     const user = req['user'] as { email: string };
     const token = req.headers['authorization']?.split(' ')[1]; // Extract Bearer token
@@ -101,6 +127,29 @@ export class AuthController {
   }
 
   /*
+  Logout from all sessions 
+  Take password in body and token in header
+  */
+  @Patch('logout-all')
+  @ApiOperation({ summary: 'Logout user from all sessions' })
+  @ApiBearerAuth()
+  @ApiBadRequestResponse({
+    description: 'User not found',
+  })
+  @ApiBody({
+    type: LogOutAllDto,
+  })
+  @UseGuards(JwtAuthGuard)
+  async logoutAll(@Req() req: Request, @Body() body: LogOutAllDto) {
+    const user = req['user'] as userPayloadType;
+    await this.authService.logoutAllSessions(user.email, body.password);
+    return {
+      success: true,
+      message: 'User logged out from all sessions successfully',
+    };
+  }
+
+  /*
   Change user password
   */
   @ApiOperation({ summary: 'Change user password' })
@@ -117,9 +166,8 @@ export class AuthController {
   })
   @Post('change-password')
   @UseGuards(JwtAuthGuard)
-  @Roles('user', 'admin')
   async changePassword(@Req() req: Request, @Body() body: changePasswordDto) {
-    const user = req['user'] as { email: string };
+    const user = req['user'] as userPayloadType;
     const updatedUser = await this.authService.changePassword(user.email, body);
     return {
       // success: true,
