@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import { Project } from './entities/project.entity';
@@ -86,6 +86,44 @@ export class ProjectService {
     if (!user) throw new NotFoundException('User not found');
 
     project.manager = user;
+    return this.projectRepo.save(project);
+  }
+
+  async addMember(projectId: string, memberId: string) {
+    const project = await this.projectRepo.findOne({
+      where: { id: projectId },
+      relations: ['teamMembers'], // must load teamMembers to modify
+    });
+    if (!project) throw new NotFoundException('Project not found');
+
+    const user = await this.userRepo.findOne({ where: { id: memberId } });
+    if (!user) throw new NotFoundException('User not found');
+
+    // Prevent duplicate additions
+    const alreadyMember = project.teamMembers?.some((m) => m.id === user.id);
+    if (alreadyMember) {
+      throw new BadRequestException('User is already a team member');
+    }
+
+    // Add to array and save
+    project.teamMembers = [...(project.teamMembers || []), user];
+    return this.projectRepo.save(project);
+  }
+
+
+  async removeMember(projectId: string, memberId: string) {
+    const project = await this.projectRepo.findOne({
+      where: { id: projectId },
+      relations: ['teamMembers'], // must load teamMembers to modify
+    });
+    if (!project) throw new NotFoundException('Project not found');
+    const user = await this.userRepo.findOne({ where: { id: memberId } });
+    if (!user) throw new NotFoundException('User not found');
+    const isMember = project.teamMembers?.some((m) => m.id === user.id);
+    if (!isMember) {
+      throw new BadRequestException('User is not a team member');
+    }
+    project.teamMembers = project.teamMembers.filter((m) => m.id !== user.id);
     return this.projectRepo.save(project);
   }
 }

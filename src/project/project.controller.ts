@@ -104,4 +104,40 @@ export class ProjectController {
       data: res,
     }
   }
+
+  @Roles(UserRole.SUPERADMIN)
+  @Patch(':projectId/add-member/:memberId')
+  @ApiOperation({ summary: 'Add a member (user) to a project' })
+  @ApiParam({ name: 'projectId', type: 'string' })
+  @ApiParam({ name: 'memberId', type: 'string' })
+  @ApiResponse({ status: 200, description: 'Member added successfully' })
+  async addMember(
+    @Param('projectId') projectId: string,
+    @Param('memberId') memberId: string,
+  ) {
+    const res = await this.projectService.addMember(projectId, memberId);
+    return{
+      success: true,
+      message: 'Member added successfully',
+      data: res,
+    }
+  }
+
+  @Roles(UserRole.SUPERADMIN)
+  @Patch(':projectId/remove-member/:memberId')
+  @ApiOperation({ summary: 'Remove a member (user) from a project' })
+  @ApiParam({ name: 'projectId', type: 'string' })
+  @ApiParam({ name: 'memberId', type: 'string' })
+  @ApiResponse({ status: 200, description: 'Member removed successfully' })
+  async removeMember(
+    @Param('projectId') projectId: string,
+    @Param('memberId') memberId: string,
+  ) {
+    const res = await this.projectService.removeMember(projectId, memberId);
+    return{
+      success: true,
+      message: 'Member removed successfully',
+      data: res,
+    }
+  }
 }

@@ -8,7 +8,7 @@ import { FileuploadController } from './file-upload.controller';
 @Module({
   imports: [MulterModule.register(multerConfig)], // config once, available everywhere
   providers: [FileUploadService],
-  controllers: [FileuploadController],
+  // controllers: [FileuploadController],
   exports: [FileUploadService, MulterModule], // so other modules can use it
 })
 export class FileUploadModule { }
