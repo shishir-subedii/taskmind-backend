@@ -3,7 +3,6 @@ import {
     forwardRef,
     Inject,
     Injectable,
-    InternalServerErrorException,
 } from '@nestjs/common';
 import { UserRegisterDto } from './dto/UserRegisterDto';
 import { UserService } from 'src/user/user.service';
@@ -102,4 +101,32 @@ export class AuthService {
         }
         return updatedUser;
     }
+
+    //by superadmin
+    async changeEmail(oldEmail: string, newEmail: string) {
+        const updatedUser = await this.userService.changeEmail(oldEmail, newEmail);
+        if (!updatedUser) {
+            throw new BadRequestException('User not found or email change failed');
+        }
+        return updatedUser;
+    }
+
+    //by superadmin 
+    async changePasswordBySuperAdmin(email: string, newPassword: string) {
+        const user = await this.userService.changePasswordBySuperadmin(email, newPassword);
+        if (!user) {
+            throw new BadRequestException('User not found or password change failed');
+        }
+        return user;
+    }
+
+    //by superadmin
+    async deleteUser(email: string) {
+        const result = await this.userService.deleteUser(email);
+        if (!result) {
+            throw new BadRequestException('User not found or deletion failed');
+        }
+        return result;
+    }
+
 }

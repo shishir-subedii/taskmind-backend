@@ -1,13 +1,15 @@
-import { BadRequestException, Body, Controller, Get, HttpCode, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { ApiOperation, ApiResponse, ApiBadRequestResponse, ApiBody, ApiParam, ApiBearerAuth } from '@nestjs/swagger';
 import { UserRegisterDto } from './dto/UserRegisterDto';
 import { UserLoginDto } from './dto/UserLoginDto';
 import { JwtAuthGuard } from 'src/common/auth/AuthGuard';
 import { changePasswordDto } from './dto/ChangePasswordDto';
-import { VerifyOtpDto } from './dto/VerifyOtp.dto';
 import { userPayloadType } from 'src/common/types/auth.types';
 import { LogOutAllDto } from './dto/LogoutAll.Dto';
+import { changeEmailSuperadminDto, changePasswordSuperadminDto, deleteUserDto } from './dto/SuperAdminAuth.Dto';
+import { Roles } from 'src/common/auth/AuthRoles';
+import { UserRole } from 'src/common/enums/auth-roles.enum';
 
 @Controller('auth')
 export class AuthController {
@@ -153,5 +155,79 @@ export class AuthController {
     };
   }
 
-}
 
+  //change password for superadmin without old password
+  @ApiOperation({ summary: 'Change user password by superadmin' })
+  @ApiResponse({
+    status: 200,
+    description: 'User password changed successfully',
+  })
+  @ApiBearerAuth()
+  @ApiBadRequestResponse({
+    description: 'User not found',
+  })
+  @ApiBody({
+    type: changePasswordSuperadminDto
+  })
+  @Patch('change-password-by-superadmin')
+  @UseGuards(JwtAuthGuard)
+  @Roles(UserRole.SUPERADMIN)
+  async changePasswordBySuperAdmin(@Body() body: changePasswordSuperadminDto) {
+    const updatedUser = await this.authService.changePasswordBySuperAdmin(body.email, body.newPassword);
+    return {
+      success: true,
+      message: 'Password changed successfully by superadmin',
+      data: updatedUser,
+    };
+  }
+
+  //change email for superadmin
+  @ApiOperation({ summary: 'Change user email by superadmin' })
+  @ApiResponse({
+    status: 200,
+    description: 'User email changed successfully',
+  })
+  @ApiBearerAuth()
+  @ApiBadRequestResponse({
+    description: 'User not found',
+  })
+  @ApiBody({
+    type: changeEmailSuperadminDto
+  })
+  @Patch('change-email-by-superadmin')
+  @UseGuards(JwtAuthGuard)
+  @Roles(UserRole.SUPERADMIN)
+  async changeEmailBySuperAdmin(@Body() body: changeEmailSuperadminDto) {
+    const updatedUser = await this.authService.changeEmail(body.oldEmail, body.newEmail);
+    return {
+      // success: true,
+      message: 'Email changed successfully by superadmin',
+      data: updatedUser,
+    };
+  }
+
+  //delete user by superadmin
+  @ApiOperation({ summary: 'Delete user by superadmin' })
+  @ApiResponse({
+    status: 200,
+    description: 'User deleted successfully',
+  })
+  @ApiBearerAuth()
+  @ApiBadRequestResponse({
+    description: 'User not found',
+  })
+  @ApiBody({
+    type: deleteUserDto
+  })
+  @Delete('delete-user-by-superadmin')
+  @UseGuards(JwtAuthGuard)
+  @Roles(UserRole.SUPERADMIN)
+  async deleteUserBySuperAdmin(@Body() body: deleteUserDto) {
+    const result = await this.authService.deleteUser(body.email);
+    return {
+      success: true,
+      message: 'User deleted successfully by superadmin',
+      data: result,
+    };
+  }
+}

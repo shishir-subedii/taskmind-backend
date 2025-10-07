@@ -11,19 +11,12 @@ import { User } from './entity/user.entity';
 import { UserRegisterDto } from 'src/auth/dto/UserRegisterDto';
 import * as bcrypt from 'bcrypt';
 import { changePasswordDto } from 'src/auth/dto/ChangePasswordDto';
-import { AuthService } from 'src/auth/auth.service';
-import { MailService } from 'src/common/mail/mail.service';
-import { isProd } from 'src/common/utils/checkMode';
 
 @Injectable()
 export class UserService {
     constructor(
         @InjectRepository(User)
-        private usersRepository: Repository<User>,
-        private mailservice: MailService,
-        private dataSource: DataSource,
-        @Inject(forwardRef(() => AuthService))
-        private authService: AuthService
+        private usersRepository: Repository<User>
     ) { }
 
     async register(userData: UserRegisterDto) {
@@ -38,7 +31,7 @@ export class UserService {
             name: userData.name,
             email: userData.email,
             password: hashedPassword,
-            accessTokens: [], 
+            accessTokens: [],
         });
 
         return await this.usersRepository.save(newUser);
@@ -131,6 +124,53 @@ export class UserService {
             return await this.usersRepository.save(user);
         } catch (error) {
             throw new InternalServerErrorException('Failed to change password');
+        }
+    }
+
+    //only by superadmin
+    async changeEmail(oldEmail: string, newEmail: string) {
+        const user = await this.findOneByEmail(oldEmail);
+        if (!user) {
+            throw new BadRequestException('User not found');
+        }
+        try {
+            user.email = newEmail;
+            user.accessTokens = []; // logout from all devices after email change
+            return await this.usersRepository.save(user);
+        }
+        catch (error) {
+            throw new BadRequestException('Email already in use');
+        }
+    }
+
+    //only by superadmin
+    async changePasswordBySuperadmin(email: string, newPassword: string) {
+        const user = await this.findCompleteProfileByEmail(email);
+        if (!user) {
+            throw new BadRequestException('User not found');
+        }
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        user.password = hashedPassword;
+        user.accessTokens = []; // logout from all devices after password change
+        try {
+            return await this.usersRepository.save(user);
+        } catch (error) {
+            throw new InternalServerErrorException('Failed to change password');
+        }
+    }
+
+
+    //only by superadmin
+    async deleteUser(email: string) {
+        const user = await this.findOneByEmail(email);
+        if (!user) {
+            throw new BadRequestException('User not found');
+        }
+        try {
+            await this.usersRepository.remove(user);
+            return { message: 'User deleted successfully' };
+        } catch (error) {
+            throw new InternalServerErrorException('Failed to delete user');
         }
     }
 }
