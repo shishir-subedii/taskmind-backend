@@ -1,17 +1,24 @@
-This is a template to make backend servers. 
-It includes dockercompose(for postgresql), Typeorm and other necessary configurations like jwt, .env, bcrypt etc.
-It includes routes like signup, login, logout, etc..
-It is ready to use.
+# TaskMind 🧠✨
+AI-powered project management assistant that takes the chaos out of team coordination.  
+Instead of manually writing meeting notes, assigning tasks, and sending reminders, managers can simply type or speak instructions — TaskMind turns them into structured tasks, assigns them to the right team members, updates the project dashboard, and sends personalized notifications.
 
-how to use: 
-- clone this repo : git clone https://github.com/shishir-subedii/backend-template.git
+---
 
-- install the necessary modules: npm install 
+## 🚀 Features
+- **AI Task Parsing** → Convert plain text or voice input into structured tasks.  
+- **Multi-Channel Notifications** → Send updates via Discord, Email, or Notion.  
+- **Centralized Dashboard** → Real-time project and task tracking.  
+- **Automation** → Daily summaries, reminders, and progress tracking.  
+- **Voice Support** → Whisper-based speech-to-text for spoken instructions.  
 
-- run postgresql container : 
-    - docker compose -d up (or you can use any postgresql environment)
+---
 
-- run the project(development): npm run start:dev
+## 🛠️ Tech Stack
+- **Frontend:** Next.js (dashboard), React Native (optional mobile app)  
+- **Backend:** NestJS (task management, authentication, integrations)  
+- **Database:** PostgreSQL + TypeORM  
+- **AI:** LLMs for task parsing & summarization, Whisper for speech-to-text  
+- **Integrations:** Discord Bot, Gmail API, Notion API  
+- **Deployment:** Docker + VPS/Cloud  
 
-later use your own github repo and it's configurations.
-you can remove the past commits and start fresh with your own repo. 
+---

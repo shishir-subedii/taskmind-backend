@@ -18,7 +18,6 @@ export async function SuperAdminSeeder(dataSource: DataSource) {
                 password: hashedPassword,
                 accessTokens: [],
                 role: UserRole.SUPERADMIN,
-                isVerified: true
             }),
         );
 

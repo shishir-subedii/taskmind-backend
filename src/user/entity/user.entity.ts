@@ -5,9 +5,11 @@ import {
     CreateDateColumn,
     UpdateDateColumn,
     OneToMany,
+    ManyToOne,
 } from 'typeorm';
 
 import { UserRole } from 'src/common/enums/auth-roles.enum';
+import { Project } from 'src/project/entities/project.entity';
 
 @Entity('users')
 export class User {
@@ -32,21 +34,15 @@ export class User {
     })
     accessTokens: string[] | null;
 
-    @Column({ type: 'boolean', default: false })
-    isVerified: boolean;
-
-    @Column({ type: 'varchar', nullable: true })
-    otp: string | null;
-
-    @Column({ type: 'timestamptz', nullable: true })
-    otpExpiry: Date | null;
-
     @Column({
         type: 'enum',
         enum: UserRole,
-        default: UserRole.USER,
+        default: UserRole.MEMBER,
     })
     role: UserRole;
+
+    @ManyToOne(() => Project, project => project.id, { nullable: true, onDelete: 'SET NULL' })
+    project: Project | null;
 
     @CreateDateColumn({ type: 'timestamptz' })
     createdAt: Date;

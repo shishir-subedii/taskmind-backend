@@ -36,7 +36,7 @@ export class AuthController {
     const user = await this.authService.register(userData);
     return {
       success: true,
-      message: user.message ? user.message : 'Registration successful. Please check your email for verification.',
+      message: 'Registration successful',
       data: user,
     };
   }
@@ -69,29 +69,6 @@ export class AuthController {
     };
   }
 
-  //verify signup OTP
-  @ApiOperation({ summary: 'Verify signup OTP' })
-  @ApiResponse({
-    status: 200,
-    description: 'OTP verified successfully',
-  })
-  @ApiBadRequestResponse({
-    description: 'Invalid OTP',
-  })
-  @ApiBody({
-    type: VerifyOtpDto,
-  })
-  @Post('verify-otp')
-  async verifyOtp(@Body() verifyOtpDto: VerifyOtpDto) {
-    const isValid = await this.authService.verifySignupOtp(verifyOtpDto.token, verifyOtpDto.otp);
-    if (!isValid) {
-      throw new BadRequestException('Invalid OTP');
-    }
-    return {
-      // success: true,
-      message: 'OTP verified successfully',
-    };
-  }
 
   /*
   Logout
@@ -164,7 +141,7 @@ export class AuthController {
   @ApiBadRequestResponse({
     description: 'Old password is incorrect',
   })
-  @Post('change-password')
+  @Patch('change-password')
   @UseGuards(JwtAuthGuard)
   async changePassword(@Req() req: Request, @Body() body: changePasswordDto) {
     const user = req['user'] as userPayloadType;
