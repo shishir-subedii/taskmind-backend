@@ -6,19 +6,18 @@ import { UserRole } from 'src/common/enums/auth-roles.enum';
 export async function SuperAdminSeeder(dataSource: DataSource) {
     const userRepository = dataSource.getRepository(User);
 
-    const existing = await userRepository.findOne({ where: { email: 'superadmin@default.com' } });
+    const existing = await userRepository.findOne({ where: { email: 'superadmin@taskmind.com' } });
 
     if (!existing) {
-        const hashedPassword = await bcrypt.hash('demodemo123', 10);
+        const hashedPassword = await bcrypt.hash('securePassword123', 10);
 
         await userRepository.save(
             userRepository.create({
                 name: 'Super Admin',
-                email: 'superadmin@default.com',
+                email: 'superadmin@taskmind.com',
                 password: hashedPassword,
                 accessTokens: [],
                 role: UserRole.SUPERADMIN,
-                isVerified: true
             }),
         );
 

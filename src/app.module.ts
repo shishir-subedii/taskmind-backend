@@ -9,6 +9,9 @@ import { FileUploadModule } from './file-upload/file-upload.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
+import { ProjectModule } from './project/project.module';
+import { CoreModule } from './common/core/core.module';
+import { TaskModule } from './task/task.module';
 
 @Module({
   imports: [
@@ -27,10 +30,13 @@ import { APP_GUARD } from '@nestjs/core';
     }),
     DatabaseModule,
     UsersModule,
+    CoreModule,
     AuthModule,
     AppConfigModule,
     JwtmoduleModule,
     FileUploadModule,
+    ProjectModule,
+    TaskModule,
   ],
   providers: [
     {
