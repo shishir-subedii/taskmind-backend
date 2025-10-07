@@ -11,6 +11,7 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { ProjectModule } from './project/project.module';
 import { CoreModule } from './common/core/core.module';
+import { TaskModule } from './task/task.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { CoreModule } from './common/core/core.module';
     JwtmoduleModule,
     FileUploadModule,
     ProjectModule,
+    TaskModule,
   ],
   providers: [
     {
