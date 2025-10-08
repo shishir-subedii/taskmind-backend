@@ -11,6 +11,7 @@ import {
 } from 'typeorm';
 import { Task } from 'src/task/entities/task.entity';
 import { User } from 'src/user/entity/user.entity';
+import { ProjectStatus } from 'src/common/enums/project-status.enum';
 
 @Entity('projects')
 export class Project {
@@ -42,6 +43,13 @@ export class Project {
 
     @Column({ type: 'timestamptz', nullable: true })
     deadline: Date | null;
+
+    @Column({
+        type: 'enum',
+        enum: ProjectStatus,
+        default: ProjectStatus.ACTIVE,
+    })
+    status: ProjectStatus;
 
     @Column({ type: 'varchar', array: true, nullable: true })
     assets: string[] | null;
