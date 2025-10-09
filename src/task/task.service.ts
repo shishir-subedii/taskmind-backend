@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Task } from './entities/task.entity';
@@ -6,6 +6,8 @@ import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { Project } from 'src/project/entities/project.entity';
 import { User } from 'src/user/entity/user.entity';
+import { TaskStatus } from 'src/common/enums/task-status.enum';
+import { UserRole } from 'src/common/enums/auth-roles.enum';
 
 @Injectable()
 export class TaskService {
@@ -83,4 +85,138 @@ export class TaskService {
         const task = await this.findOne(id);
         await this.taskRepo.remove(task);
     }
+
+    //fetch tasks by project id
+    async findByProject(projectId: string) {
+        const project = await this.projectRepo.findOne({ where: { id: projectId } });
+        if (!project) throw new NotFoundException('Project not found');
+
+        return this.taskRepo.find({
+            where: { project },
+            relations: ['project', 'assignedTo'],
+        });
+    }
+
+    //fetch tasks by assigned user id
+    async findByUser(userId: string) {
+        const user = await this.userRepo.findOne({ where: { id: userId } });
+        if (!user) throw new NotFoundException('User not found');
+
+        return this.taskRepo.find({
+            where: { assignedTo: user },
+            relations: ['project', 'assignedTo'],
+        });
+    }
+
+    //fetch tasks by status
+    async findByStatus(status: TaskStatus) {
+        return this.taskRepo.find({
+            where: { status },
+            relations: ['project', 'assignedTo'],
+        });
+    }
+
+    //fetch tasks by assigned user id and status
+    async findByUserAndStatus(userId: string, status: TaskStatus) {
+        const user = await this.userRepo.findOne({ where: { id: userId } });
+        if (!user) throw new NotFoundException('User not found');
+        return this.taskRepo.find({
+            where: { assignedTo: user, status },
+            relations: ['project', 'assignedTo'],
+        });
+    }
+
+    //fetch tasks by project id and user id 
+    async findByProjectAndUser(projectId: string, userId: string) {
+        const project = await this.projectRepo.findOne({ where: { id: projectId } });
+        if (!project) throw new NotFoundException('Project not found');
+
+        const user = await this.userRepo.findOne({ where: { id: userId } });
+        if (!user) throw new NotFoundException('User not found');
+        return this.taskRepo.find({
+            where: { project, assignedTo: user },
+            relations: ['project', 'assignedTo'],
+        });
+    }
+
+    //clock IN
+    async clockIn(id: string, userId: string) {
+        const task = await this.taskRepo.findOne({
+            where: {id, assignedTo: { id: userId } },
+            relations: ['assignedTo'],
+        });
+        if (!task) throw new NotFoundException('Task not found or not assigned to this user');
+        task.clockIn = new Date();
+        return this.taskRepo.save(task);
+    }
+
+    //clock OUT
+    async clockOut(id: string, userId: string) {
+        const task = await this.taskRepo.findOne({
+            where: {id, assignedTo: { id: userId } },
+            relations: ['assignedTo'],
+        });
+        if (!task) throw new NotFoundException('Task not found or not assigned to this user');
+        task.clockOut = new Date();
+        return this.taskRepo.save(task);
+    }
+
+    async changeStatus(id: string, status: TaskStatus, userId: string) {
+        // 1. Fetch user
+        const user = await this.userRepo.findOne({ where: { id: userId } });
+        if (!user) throw new NotFoundException('User not found');
+
+        // 2. Fetch task with necessary relations
+        const task = await this.taskRepo.findOne({
+            where: { id },
+            relations: ['assignedTo', 'project', 'project.manager'],
+        });
+        if (!task) throw new NotFoundException('Task not found');
+
+        const isMember = user.role === UserRole.MEMBER;
+        const isManager = user.role === UserRole.MANAGER;
+        const isSuperAdmin = user.role === UserRole.SUPERADMIN;
+
+        // 3. Member-specific rules
+        if (isMember) {
+            // member can only mark as SUBMITTED
+            if (status !== TaskStatus.SUBMITTED) {
+                throw new ForbiddenException(
+                    "Members are only allowed to mark their tasks as 'SUBMITTED'.",
+                );
+            }
+
+            // task must be assigned to the member
+            if (!task.assignedTo || task.assignedTo.id !== userId) {
+                throw new ForbiddenException(
+                    'You are not allowed to update the status of this task.',
+                );
+            }
+
+            task.status = status;
+            return await this.taskRepo.save(task);
+        }
+
+        // 4. Manager-specific rules
+        if (isManager) {
+            if (!task.project || !task.project.manager || task.project.manager.id !== userId) {
+                throw new ForbiddenException(
+                    'You are not the manager of the project this task belongs to.',
+                );
+            }
+
+            task.status = status;
+            return await this.taskRepo.save(task);
+        }
+
+        // 5. SuperAdmin can change status without restriction
+        if (isSuperAdmin) {
+            task.status = status;
+            return await this.taskRepo.save(task);
+        }
+
+        // 6. Default fallback (shouldn't reach here)
+        throw new ForbiddenException('You are not authorized to perform this action.');
+    }
+
 }
