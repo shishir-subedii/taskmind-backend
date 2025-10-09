@@ -8,13 +8,14 @@ import {
   Delete,
   UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { TaskService } from './task.service';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { JwtAuthGuard } from 'src/common/auth/AuthGuard';
 import { Roles } from 'src/common/auth/AuthRoles';
 import { UserRole } from 'src/common/enums/auth-roles.enum';
+import { TaskStatus } from 'src/common/enums/task-status.enum';
 
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
@@ -89,5 +90,90 @@ export class TaskController {
       message: 'Task deleted successfully',
       data: null,
     };
+  }
+
+  @Get('project/:projectId')
+  @ApiOperation({ summary: 'Fetch tasks by project ID' })
+  @ApiParam({ name: 'projectId', type: 'string', description: 'Project ID (UUID)' })
+  @ApiResponse({ status: 200, description: 'Tasks fetched successfully' })
+  async findByProject(@Param('projectId') projectId: string) {
+    const data = await this.taskService.findByProject(projectId);
+    return { success: true, message: 'Tasks fetched successfully', data };
+  }
+
+  @Get('user/:userId')
+  @ApiOperation({ summary: 'Fetch tasks by assigned user ID' })
+  @ApiParam({ name: 'userId', type: 'string', description: 'User ID (UUID)' })
+  @ApiResponse({ status: 200, description: 'Tasks fetched successfully' })
+  async findByUser(@Param('userId') userId: string) {
+    const data = await this.taskService.findByUser(userId);
+    return { success: true, message: 'Tasks fetched successfully', data };
+  }
+
+  @Get('status/:status')
+  @ApiOperation({ summary: 'Fetch tasks by status' })
+  @ApiParam({ name: 'status', enum: TaskStatus, description: 'Task status' })
+  @ApiResponse({ status: 200, description: 'Tasks fetched successfully' })
+  async findByStatus(@Param('status') status: TaskStatus) {
+    const data = await this.taskService.findByStatus(status);
+    return { success: true, message: 'Tasks fetched successfully', data };
+  }
+
+  @Get('user/:userId/status/:status')
+  @ApiOperation({ summary: 'Fetch tasks by user ID and status' })
+  @ApiParam({ name: 'userId', type: 'string', description: 'User ID (UUID)' })
+  @ApiParam({ name: 'status', enum: TaskStatus, description: 'Task status' })
+  @ApiResponse({ status: 200, description: 'Tasks fetched successfully' })
+  async findByUserAndStatus(@Param('userId') userId: string, @Param('status') status: TaskStatus) {
+    const data = await this.taskService.findByUserAndStatus(userId, status);
+    return { success: true, message: 'Tasks fetched successfully', data };
+  }
+
+  @Get('project/:projectId/user/:userId')
+  @ApiOperation({ summary: 'Fetch tasks by project ID and user ID' })
+  @ApiParam({ name: 'projectId', type: 'string', description: 'Project ID (UUID)' })
+  @ApiParam({ name: 'userId', type: 'string', description: 'User ID (UUID)' })
+  @ApiResponse({ status: 200, description: 'Tasks fetched successfully' })
+  async findByProjectAndUser(
+    @Param('projectId') projectId: string,
+    @Param('userId') userId: string,
+  ) {
+    const data = await this.taskService.findByProjectAndUser(projectId, userId);
+    return { success: true, message: 'Tasks fetched successfully', data };
+  }
+
+  @Post(':id/clock-in/:userId')
+  @ApiOperation({ summary: 'Clock in to a task (assigned user only)' })
+  @ApiParam({ name: 'id', type: 'string', description: 'Task ID (UUID)' })
+  @ApiParam({ name: 'userId', type: 'string', description: 'User ID (UUID)' })
+  @ApiResponse({ status: 200, description: 'Clock-in recorded successfully' })
+  async clockIn(@Param('id') id: string, @Param('userId') userId: string) {
+    const data = await this.taskService.clockIn(id, userId);
+    return { success: true, message: 'Clock-in recorded successfully', data };
+  }
+
+  @Post(':id/clock-out/:userId')
+  @ApiOperation({ summary: 'Clock out of a task (assigned user only)' })
+  @ApiParam({ name: 'id', type: 'string', description: 'Task ID (UUID)' })
+  @ApiParam({ name: 'userId', type: 'string', description: 'User ID (UUID)' })
+  @ApiResponse({ status: 200, description: 'Clock-out recorded successfully' })
+  async clockOut(@Param('id') id: string, @Param('userId') userId: string) {
+    const data = await this.taskService.clockOut(id, userId);
+    return { success: true, message: 'Clock-out recorded successfully', data };
+  }
+
+  @Patch(':id/status')
+  @ApiOperation({ summary: 'Change task status (role-based rules apply)' })
+  @ApiParam({ name: 'id', type: 'string', description: 'Task ID (UUID)' })
+  @ApiQuery({ name: 'status', enum: TaskStatus, description: 'New status to apply' })
+  @ApiQuery({ name: 'userId', type: 'string', description: 'User ID performing the change' })
+  @ApiResponse({ status: 200, description: 'Task status updated successfully' })
+  async changeStatus(
+    @Param('id') id: string,
+    @Body('status') status: TaskStatus,
+    @Body('userId') userId: string,
+  ) {
+    const data = await this.taskService.changeStatus(id, status, userId);
+    return { success: true, message: 'Task status updated successfully', data };
   }
 }
