@@ -7,6 +7,7 @@ import { userPayloadType } from 'src/common/types/auth.types';
 
 @ApiTags('Users')
 @Controller('user')
+@ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 export class UserController {
     constructor(
@@ -20,7 +21,6 @@ export class UserController {
         status: 200,
         description: 'User profile retrieved successfully',
     })
-    @ApiBearerAuth()
     @ApiBadRequestResponse({
         description: 'User not found',
     })
@@ -32,6 +32,17 @@ export class UserController {
             success: true,
             message: 'User profile retrieved successfully',
             data: userProfile,
+        };
+    }
+
+    //get all users
+    @Get('all')
+    async getAllUsers() {
+        const users = await this.userService.findAll();
+        return {
+            success: true,
+            message: 'Users retrieved successfully',
+            data: users,
         };
     }
 }
