@@ -1,6 +1,9 @@
 import 'dotenv/config';
 import { DataSource } from 'typeorm';
 import { SuperAdminSeeder } from './superadmin.seeder';
+import { ManagerSeeder } from './manager.seeder';
+import { ProjectSeeder } from './project.seeder';
+import { MemberSeeder } from './member.seeder';
 
 const AppDataSource = new DataSource({
     type: 'postgres',
@@ -20,6 +23,9 @@ async function main() {
         console.log('Connected to Postgres');
 
         await SuperAdminSeeder(AppDataSource);
+        await ManagerSeeder(AppDataSource);
+        await MemberSeeder(AppDataSource);
+        await ProjectSeeder(AppDataSource);
 
         await AppDataSource.destroy();
         console.log('Disconnected from Postgres');

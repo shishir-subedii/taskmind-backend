@@ -7,6 +7,7 @@ import {
   Patch,
   Delete,
   UseGuards,
+  Req,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { TaskService } from './task.service';
@@ -29,8 +30,9 @@ export class TaskController {
   @ApiOperation({ summary: 'Create a new task' })
   @ApiResponse({ status: 201, description: 'Task created successfully' })
   @ApiResponse({ status: 404, description: 'Project or assigned user not found' })
-  async create(@Body() dto: CreateTaskDto) {
-    const data = await this.taskService.create(dto);
+  async create(@Body() dto: CreateTaskDto, @Req() req) {
+    const userId = req.user.id;
+    const data = await this.taskService.create(dto, userId);
     return {
       success: true,
       message: 'Task created successfully',
@@ -69,8 +71,9 @@ export class TaskController {
   @ApiParam({ name: 'id', type: 'string', description: 'Task ID (UUID)' })
   @ApiResponse({ status: 200, description: 'Task updated successfully' })
   @ApiResponse({ status: 404, description: 'Task not found' })
-  async update(@Param('id') id: string, @Body() dto: UpdateTaskDto) {
-    const data = await this.taskService.update(id, dto);
+  async update(@Param('id') id: string, @Body() dto: UpdateTaskDto, @Req() req) {
+    const userId = req.user.id;
+    const data = await this.taskService.update(id, dto, userId);
     return {
       success: true,
       message: 'Task updated successfully',
