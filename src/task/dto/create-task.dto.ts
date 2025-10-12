@@ -6,7 +6,9 @@ import {
     IsArray,
     IsDateString,
     IsInt,
+    IsEnum,
 } from 'class-validator';
+import { TaskPriority } from 'src/common/enums/task-priority.enum';
 
 export class CreateTaskDto {
     @ApiProperty({
@@ -16,12 +18,9 @@ export class CreateTaskDto {
     @IsInt()
     sNo: number;
 
-    @ApiProperty({
-        example: 'Design UI Wireframe',
-        description: 'Name of the task',
-    })
-    @IsString()
-    name: string;
+    @ApiProperty({ example: TaskPriority.MEDIUM, enum: TaskPriority })
+    @IsEnum(TaskPriority)
+    priority: TaskPriority;
 
     @ApiPropertyOptional({
         example: 'Homepage layout',

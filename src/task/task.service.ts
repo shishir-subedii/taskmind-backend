@@ -20,51 +20,91 @@ export class TaskService {
         private readonly userRepo: Repository<User>,
     ) { }
 
-    async create(dto: CreateTaskDto, userId: string) {
-
+    // Utility: Fetch user or fail
+    private async getUserOrFail(userId: string): Promise<User> {
         const user = await this.userRepo.findOne({ where: { id: userId } });
         if (!user) throw new NotFoundException('User not found');
-        if (user.role === UserRole.MEMBER) {
-            throw new ForbiddenException('Members are not allowed to create tasks');
-        }
+        return user;
+    }
 
-        const findUser = await this.userRepo.findOne({
-            where: { id: dto.assignedToId },
+    // Utility: Fetch project or fail
+    private async getProjectOrFail(projectId: string): Promise<Project> {
+        const project = await this.projectRepo.findOne({
+            where: { id: projectId },
+            relations: ['manager', 'teamMembers'],
         });
-        const project = await this.projectRepo.findOne({ where: { id: dto.projectId }, relations: ['manager', 'teamMembers'] });
         if (!project) throw new NotFoundException('Project not found');
+        return project;
+    }
 
-        console.log(project);
-        console.log(user);
+    // Utility: Verify if user has allowed role(s)
+    private verifyRole(user: User, allowedRoles: UserRole[]) {
+        if (!allowedRoles.includes(user.role)) {
+            throw new ForbiddenException(
+                `Access denied. Allowed roles: ${allowedRoles.join(', ')}`,
+            );
+        }
+    }
 
-        if (user.role === UserRole.MANAGER && project.manager?.id !== userId) {
+    // Utility: Verify if user is manager of a project
+    private verifyManagerOfProject(user: User, project: Project) {
+        if (project.manager?.id !== user.id) {
             throw new ForbiddenException('You are not the manager of this project');
         }
+    }
 
-        if (!project.teamMembers.some(member => member.id === findUser!.id)) {
-            throw new ForbiddenException('User is not a member of this project');
+    // Utility: Verify if user is a member of a project
+    private verifyMemberOfProject(user: User, project: Project) {
+        const isMember = project.teamMembers.some((m) => m.id === user.id);
+        if (!isMember) {
+            throw new ForbiddenException('You are not a member of this project');
         }
+    }
+
+    // Utility: Verify if user is a Manager or SuperAdmin
+    private verifyManagerOrSuperAdmin(user: User) {
+        if (![UserRole.MANAGER, UserRole.SUPERADMIN].includes(user.role)) {
+            throw new ForbiddenException('Only Manager or SuperAdmin can perform this action');
+        }
+    }
+
+    // Create Task
+    async create(dto: CreateTaskDto, userId: string) {
+        const user = await this.getUserOrFail(userId);
+        this.verifyManagerOrSuperAdmin(user);
+
+        const project = await this.getProjectOrFail(dto.projectId);
+        console.log("Project fetched:", project);
+
+        if (user.role === UserRole.MANAGER) {
+            this.verifyManagerOfProject(user, project);
+        }
+        console.log('user', user);
+        console.log('dto.assignedToId', dto.assignedToId);
+
+        //BUG: here
+        let assignedUser: User | null = null;
+        if (dto.assignedToId) {
+            assignedUser = await this.getUserOrFail(dto.assignedToId);
+            this.verifyMemberOfProject(assignedUser, project);
+        }
+        console.log("Assigned User:", assignedUser);
 
         const task = this.taskRepo.create({
             sNo: dto.sNo,
-            name: dto.name,
             title: dto.title,
             description: dto.description,
             project,
             assets: dto.assets ?? [],
+            assignedTo: assignedUser ?? null,
+            assignedAt: assignedUser ? new Date() : null,
             deadline: dto.deadline ? new Date(dto.deadline) : null,
         });
-
-        if (dto.assignedToId) {
-            const user = await this.userRepo.findOne({ where: { id: dto.assignedToId } });
-            if (!user) throw new NotFoundException('Assigned user not found');
-            task.assignedTo = user;
-            task.assignedAt = new Date();
-        }
 
         return this.taskRepo.save(task);
     }
 
+    // Find all tasks
     async findAll() {
         return this.taskRepo.find({
             relations: ['project', 'assignedTo'],
@@ -72,6 +112,7 @@ export class TaskService {
         });
     }
 
+    // Find one task
     async findOne(id: string) {
         const task = await this.taskRepo.findOne({
             where: { id },
@@ -81,54 +122,58 @@ export class TaskService {
         return task;
     }
 
+    // Update Task
     async update(id: string, dto: UpdateTaskDto, userId: string) {
         const task = await this.findOne(id);
+        const user = await this.getUserOrFail(userId);
 
-        if (task.assignedTo?.id !== userId) {
-            const user = await this.userRepo.findOne({ where: { id: userId } });
-            if (!user) throw new NotFoundException('User not found');
-            if (user.role === UserRole.MEMBER) {
-                throw new ForbiddenException('Members are not allowed to update tasks');
-            }
-            if (user.role === UserRole.MANAGER) {
-                if (!task.project) {
-                    throw new ForbiddenException('Task is not associated with any project');
-                }
-                const project = await this.projectRepo.findOne({ where: { id: task.project.id }, relations: ['manager'] });
-                if (!project) throw new NotFoundException('Project not found');
-                if (project.manager?.id !== userId) {
-                    throw new ForbiddenException('You are not the manager of this project');
-                }
-            }
+        if (user.role === UserRole.MEMBER && task.assignedTo?.id !== userId) {
+            throw new ForbiddenException('Members cannot update tasks not assigned to them');
+        }
+
+        if (user.role === UserRole.MANAGER && task.project) {
+            const project = await this.getProjectOrFail(task.project.id);
+            this.verifyManagerOfProject(user, project);
         }
 
         Object.assign(task, dto);
 
         if (dto.assignedToId) {
-            const user = await this.userRepo.findOne({ where: { id: dto.assignedToId } });
-            if (!user) throw new NotFoundException('Assigned user not found');
-            task.assignedTo = user;
+            const newAssignedUser = await this.getUserOrFail(dto.assignedToId);
+            this.verifyMemberOfProject(newAssignedUser, task.project);
+            task.assignedTo = newAssignedUser;
             task.assignedAt = new Date();
         }
 
         if (dto.projectId) {
-            const project = await this.projectRepo.findOne({ where: { id: dto.projectId } });
-            if (!project) throw new NotFoundException('Project not found');
-            task.project = project;
+            const newProject = await this.getProjectOrFail(dto.projectId);
+            task.project = newProject;
         }
 
         return this.taskRepo.save(task);
     }
 
-    async remove(id: string) {
+    // Remove Task
+    async remove(id: string, userId: string) {
         const task = await this.findOne(id);
+        const user = await this.getUserOrFail(userId);
+        this.verifyManagerOrSuperAdmin(user);
+
+        if (user.role === UserRole.MANAGER && task.project) {
+            const project = await this.getProjectOrFail(task.project.id);
+            this.verifyManagerOfProject(user, project);
+        }
+
         await this.taskRepo.remove(task);
     }
 
-    //fetch tasks by project id
-    async findByProject(projectId: string) {
-        const project = await this.projectRepo.findOne({ where: { id: projectId } });
-        if (!project) throw new NotFoundException('Project not found');
+    // Find tasks by project
+    async findByProject(projectId: string, userId: string) {
+        const project = await this.getProjectOrFail(projectId);
+        const user = await this.getUserOrFail(userId);
+
+        if (user.role === UserRole.MANAGER) this.verifyManagerOfProject(user, project);
+        if (user.role === UserRole.MEMBER) this.verifyMemberOfProject(user, project);
 
         return this.taskRepo.find({
             where: { project },
@@ -136,18 +181,17 @@ export class TaskService {
         });
     }
 
-    //fetch tasks by assigned user id
+    // Find tasks by assigned user
     async findByUser(userId: string) {
-        const user = await this.userRepo.findOne({ where: { id: userId } });
-        if (!user) throw new NotFoundException('User not found');
-
-        return this.taskRepo.find({
-            where: { assignedTo: user },
+        const user = await this.getUserOrFail(userId);
+        const data = await this.taskRepo.find({
+            where: { assignedTo: {id: user.id} },
             relations: ['project', 'assignedTo'],
         });
+        return data;
     }
 
-    //fetch tasks by status
+    // Find tasks by status
     async findByStatus(status: TaskStatus) {
         return this.taskRepo.find({
             where: { status },
@@ -155,30 +199,28 @@ export class TaskService {
         });
     }
 
-    //fetch tasks by assigned user id and status
+    // Find tasks by user and status
     async findByUserAndStatus(userId: string, status: TaskStatus) {
-        const user = await this.userRepo.findOne({ where: { id: userId } });
-        if (!user) throw new NotFoundException('User not found');
+        const user = await this.getUserOrFail(userId);
         return this.taskRepo.find({
             where: { assignedTo: user, status },
             relations: ['project', 'assignedTo'],
         });
     }
 
-    //fetch tasks by project id and user id 
+    // Find tasks by project and user
     async findByProjectAndUser(projectId: string, userId: string) {
-        const project = await this.projectRepo.findOne({ where: { id: projectId } });
-        if (!project) throw new NotFoundException('Project not found');
+        const project = await this.getProjectOrFail(projectId);
+        const user = await this.getUserOrFail(userId);
+        this.verifyMemberOfProject(user, project);
 
-        const user = await this.userRepo.findOne({ where: { id: userId } });
-        if (!user) throw new NotFoundException('User not found');
         return this.taskRepo.find({
             where: { project, assignedTo: user },
             relations: ['project', 'assignedTo'],
         });
     }
 
-    //clock IN
+    // Clock In
     async clockIn(id: string, userId: string) {
         const task = await this.taskRepo.findOne({
             where: { id, assignedTo: { id: userId } },
@@ -189,7 +231,7 @@ export class TaskService {
         return this.taskRepo.save(task);
     }
 
-    //clock OUT
+    // Clock Out
     async clockOut(id: string, userId: string) {
         const task = await this.taskRepo.findOne({
             where: { id, assignedTo: { id: userId } },
@@ -200,62 +242,39 @@ export class TaskService {
         return this.taskRepo.save(task);
     }
 
+    // Change Task Status
     async changeStatus(id: string, status: TaskStatus, userId: string) {
-        // 1. Fetch user
-        const user = await this.userRepo.findOne({ where: { id: userId } });
-        if (!user) throw new NotFoundException('User not found');
-
-        // 2. Fetch task with necessary relations
+        const user = await this.getUserOrFail(userId);
         const task = await this.taskRepo.findOne({
             where: { id },
             relations: ['assignedTo', 'project', 'project.manager'],
         });
         if (!task) throw new NotFoundException('Task not found');
 
-        const isMember = user.role === UserRole.MEMBER;
-        const isManager = user.role === UserRole.MANAGER;
-        const isSuperAdmin = user.role === UserRole.SUPERADMIN;
-
-        // 3. Member-specific rules
-        if (isMember) {
-            // member can only mark as SUBMITTED
-            if (status !== TaskStatus.SUBMITTED) {
-                throw new ForbiddenException(
-                    "Members are only allowed to mark their tasks as 'SUBMITTED'.",
-                );
-            }
-
-            // task must be assigned to the member
+        if (user.role === UserRole.MEMBER) {
             if (!task.assignedTo || task.assignedTo.id !== userId) {
-                throw new ForbiddenException(
-                    'You are not allowed to update the status of this task.',
-                );
+                throw new ForbiddenException('You are not allowed to update this task status');
             }
-
+            if (status !== TaskStatus.SUBMITTED) {
+                throw new ForbiddenException("Members can only mark their tasks as 'SUBMITTED'");
+            }
             task.status = status;
-            return await this.taskRepo.save(task);
+            return this.taskRepo.save(task);
         }
 
-        // 4. Manager-specific rules
-        if (isManager) {
+        if (user.role === UserRole.MANAGER) {
             if (!task.project || !task.project.manager || task.project.manager.id !== userId) {
-                throw new ForbiddenException(
-                    'You are not the manager of the project this task belongs to.',
-                );
+                throw new ForbiddenException('You are not the manager of this project');
             }
-
             task.status = status;
-            return await this.taskRepo.save(task);
+            return this.taskRepo.save(task);
         }
 
-        // 5. SuperAdmin can change status without restriction
-        if (isSuperAdmin) {
+        if (user.role === UserRole.SUPERADMIN) {
             task.status = status;
-            return await this.taskRepo.save(task);
+            return this.taskRepo.save(task);
         }
 
-        // 6. Default fallback (shouldn't reach here)
-        throw new ForbiddenException('You are not authorized to perform this action.');
+        throw new ForbiddenException('You are not authorized to perform this action');
     }
-
 }

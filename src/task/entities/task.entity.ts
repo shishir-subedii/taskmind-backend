@@ -9,17 +9,18 @@ import {
 import { TaskStatus } from 'src/common/enums/task-status.enum';
 import { Project } from 'src/project/entities/project.entity';
 import { User } from 'src/user/entity/user.entity';
+import { TaskPriority } from 'src/common/enums/task-priority.enum';
 
 @Entity('tasks')
 export class Task {
     @PrimaryGeneratedColumn('uuid')
     id: string;
 
-    @Column({ type: 'int' })
+    @Column({ type: 'int', generated: "increment" })
     sNo: number;
 
-    @Column({ type: 'varchar' })
-    name: string;
+    @Column({ type: 'enum', enum: TaskPriority, default: TaskPriority.MEDIUM })
+    priority: TaskPriority
 
     @Column({ type: 'varchar', nullable: true })
     title?: string | null;
