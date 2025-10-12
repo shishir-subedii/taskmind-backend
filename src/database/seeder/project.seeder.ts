@@ -8,6 +8,13 @@ export async function ProjectSeeder(dataSource: DataSource) {
 
     const existing = await userRepository.findOne({ where: { email: 'manager@taskmind.com' } });
 
+
+    const findMember = await userRepository.findOne({
+        where: {
+            email: 'member@taskmind.com'
+        }
+    })
+
     if (existing) {
         await projectRepository.save(
             projectRepository.create({
@@ -16,7 +23,9 @@ export async function ProjectSeeder(dataSource: DataSource) {
                 deadline: new Date(new Date().setMonth(new Date().getMonth() + 1)),
                 assets: [],
                 manager: existing,
-                teamMembers: [],
+                teamMembers: [
+                    findMember!,
+                ],
             }),
         );
 
