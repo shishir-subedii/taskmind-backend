@@ -10,6 +10,7 @@ import { TaskStatus } from 'src/common/enums/task-status.enum';
 import { UserRole } from 'src/common/enums/auth-roles.enum';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
+import { NotificationService } from 'src/notification/notification.service';
 
 @Injectable()
 export class TaskService {
@@ -21,6 +22,7 @@ export class TaskService {
         @InjectRepository(User)
         private readonly userRepo: Repository<User>,
         @InjectQueue('mail-queue') private readonly mailQueue: Queue,
+        private readonly notificationService: NotificationService,
     ) { }
 
     // Utility: Fetch user or fail
@@ -108,6 +110,7 @@ export class TaskService {
                 subject: `Task Assigned: ${task.title}`,
                 content: `You have been assigned a new task: ${task.title}. Please check your dashboard for more details.`,
             });
+            await this.notificationService.createNotification(assignedUser, `You have been assigned a new task: ${task.title}`);
         }
 
         return this.taskRepo.save(task);
