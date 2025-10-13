@@ -33,7 +33,7 @@ import { TaskStatus } from 'src/common/enums/task-status.enum';
 export class TaskController {
   constructor(private readonly taskService: TaskService) { }
 
-  @Post('projects/:projectId/extract-tasks')
+  @Post('create/:projectId/with-ai')
   @ApiOperation({ summary: 'Extract tasks from manager text and create them' })
   @ApiParam({ name: 'projectId', description: 'UUID of the project' })
   @ApiBody({
