@@ -12,6 +12,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { ProjectModule } from './project/project.module';
 import { CoreModule } from './common/core/core.module';
 import { TaskModule } from './task/task.module';
+import { BullModule } from '@nestjs/bullmq';
 
 @Module({
   imports: [
@@ -27,6 +28,12 @@ import { TaskModule } from './task/task.module';
           },
         ],
       }),
+    }),
+    BullModule.forRoot({
+      connection: {
+        host: 'localhost',
+        port: 6379,
+      },
     }),
     DatabaseModule,
     UsersModule,

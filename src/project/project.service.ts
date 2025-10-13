@@ -5,6 +5,7 @@ import { Project } from './entities/project.entity';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { User } from 'src/user/entity/user.entity';
+import { UserRole } from 'src/common/enums/auth-roles.enum';
 
 @Injectable()
 export class ProjectService {
@@ -43,6 +44,33 @@ export class ProjectService {
       order: { createdAt: 'DESC' },
     });
   }
+
+  async findMyProjects(userId: string): Promise<Project[]> {
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
+
+    if (user.role === UserRole.MANAGER) {
+      return this.projectRepo.find({
+        where: { manager: { id: user.id } },
+        relations: ['manager', 'teamMembers', 'tasks'],
+        order: { createdAt: 'DESC' },
+      });
+    }
+
+    if (user.role === UserRole.MEMBER) {
+      return this.projectRepo
+        .createQueryBuilder('project')
+        .leftJoinAndSelect('project.manager', 'manager')
+        .leftJoinAndSelect('project.teamMembers', 'teamMember')
+        .leftJoinAndSelect('project.tasks', 'task')
+        .where('teamMember.id = :userId', { userId: user.id })
+        .orderBy('project.createdAt', 'DESC')
+        .getMany();
+    }
+
+    return [];
+  }
+
 
   async findOne(id: string): Promise<Project> {
     const project = await this.projectRepo.findOne({
