@@ -34,6 +34,9 @@ export class AuthController {
     type: UserRegisterDto,
   })
   @Post('register')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @Roles(UserRole.SUPERADMIN) // only superadmin can create new users
   async register(@Body() userData: UserRegisterDto) {
     const user = await this.authService.register(userData);
     return {

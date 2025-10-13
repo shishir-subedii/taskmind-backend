@@ -11,6 +11,10 @@ import { UserRole } from 'src/common/enums/auth-roles.enum';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { NotificationService } from 'src/notification/notification.service';
+import ollama from 'ollama';
+import { ProjectService } from 'src/project/project.service';
+import { isProd } from 'src/common/utils/checkMode';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 @Injectable()
 export class TaskService {
@@ -23,7 +27,84 @@ export class TaskService {
         private readonly userRepo: Repository<User>,
         @InjectQueue('mail-queue') private readonly mailQueue: Queue,
         private readonly notificationService: NotificationService,
+        private readonly projectService: ProjectService,
     ) { }
+
+    async askAI(prompt: string){
+        const ai = new GoogleGenerativeAI(String(process.env.GEMINI_API_KEY));
+        if(isProd()){
+            //In production, use gemini API
+            const model = ai.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
+            const result = await model.generateContent(prompt);
+            return result.response.text();
+        }
+        const response = await ollama.chat({
+            model: 'llama3.1:8b',
+            messages: [{ role: 'user', content: prompt }],
+        });
+        return response.message?.content ?? '';
+    }
+
+    async extractTasks(text: string, projectId: string): Promise<CreateTaskDto[]> {
+        const members = await this.projectService.findMembers(projectId);
+        const memberList = members.map(m => `${m.name} (${m.email}, id=${m.id})`).join('\n');
+
+        const prompt = `
+You are an assistant creating project tasks.
+
+Project ID: ${projectId}
+Team Members:
+${memberList}
+
+Manager said:
+"""${text}"""
+
+some things to remember: 
+
+default deadline is 6pm on the assigned day if deadline is not mentioned
+default priority is MEDIUM if not mentioned
+Generate tasks based on the above instructions.
+export enum TaskPriority{
+    LOW = 'LOW',
+    MEDIUM = 'MEDIUM',
+    HIGH = 'HIGH',
+    URGENT = 'URGENT'
+}
+Make sure the task priority is one of the above values.
+assigned to id should be one of the team members whom the task is assigned to.
+make up a task description based on the task title if not provided.
+
+If no tasks can be created from the text, return an empty array [].
+If only one task can be created, return an array with that single task.
+try to understand the task details. 
+try to understand the task priority look at the words like urgent, important, low, medium, etc.
+manager might mention the priority of the task using words like urgent, important, low, medium, high, etc.
+
+return only json array of tasks in the following format:
+Output a JSON array like this and strict json no text or explanation. nothing apart from the json array. make sure to include all the fields in each task object. if some field is not available use null or empty array as value.:
+[
+  { "title": "Design login page", "description": "today you should design the login page using Figma", "assignedToId": "uuid", "priority": "MEDIUM or HIGH or LOW or URGENT", deadline: "2024-12-31T23:59:59Z", assets: ["http://linktoasset1", "http://linktoasset2"] },
+]
+    `;
+
+
+        const raw = await this.askAI(prompt);
+        console.log("AI Response:", raw);
+        const jsonMatch = raw.match(/\[.*\]/s);
+        if (!jsonMatch) return [];
+        return JSON.parse(jsonMatch[0]);
+    }
+
+    async extractAndCreateTasks(text: string, projectId: string, userId: string): Promise<Task[]> {
+        //verify user is manager of project
+        const project = await this.getProjectOrFail(projectId);
+        const user = await this.getUserOrFail(userId);
+        this.verifyManagerOfProject(user, project);
+
+        const dtos = await this.extractTasks(text, projectId);
+        console.log("Extracted DTOs:", dtos);
+        return this.createMultiple(dtos, userId);
+    }
 
     // Utility: Fetch user or fail
     private async getUserOrFail(userId: string): Promise<User> {
@@ -79,8 +160,6 @@ export class TaskService {
         this.verifyManagerOrSuperAdmin(user);
 
         const project = await this.getProjectOrFail(dto.projectId);
-        console.log("Project fetched:", project);
-
         if (user.role === UserRole.MANAGER) {
             this.verifyManagerOfProject(user, project);
         }
@@ -90,13 +169,14 @@ export class TaskService {
             assignedUser = await this.getUserOrFail(dto.assignedToId);
             this.verifyMemberOfProject(assignedUser, project);
         }
-        console.log("Assigned User:", assignedUser);
+        console.log("Creating task with DTO:", dto, "Assigned User:", assignedUser);
 
         const task = this.taskRepo.create({
             sNo: dto.sNo,
             title: dto.title,
             description: dto.description,
             project,
+            priority: dto.priority,
             assets: dto.assets ?? [],
             assignedTo: assignedUser ?? null,
             assignedAt: assignedUser ? new Date() : null,
@@ -136,33 +216,13 @@ export class TaskService {
 
     //add multiple tasks. 
     async createMultiple(dtos: CreateTaskDto[], userId: string) {
-        const user = await this.getUserOrFail(userId);
-        this.verifyManagerOrSuperAdmin(user);
-        const tasks: Task[] = [];
-
+        console.log("Creating multiple tasks:", dtos);
+        let tasks: Task[] = [];
         for (const dto of dtos) {
-            const project = await this.getProjectOrFail(dto.projectId);
-            if (user.role === UserRole.MANAGER) {
-                this.verifyManagerOfProject(user, project);
-            }
-            let assignedUser: User | null = null;
-            if (dto.assignedToId) {
-                assignedUser = await this.getUserOrFail(dto.assignedToId);
-                this.verifyMemberOfProject(assignedUser, project);
-            }
-            const task = this.taskRepo.create({
-                sNo: dto.sNo,
-                title: dto.title,
-                description: dto.description,
-                project,
-                assets: dto.assets ?? [],
-                assignedTo: assignedUser ?? null,
-                assignedAt: assignedUser ? new Date() : null,
-                deadline: dto.deadline ? new Date(dto.deadline) : null,
-            });
-            tasks.push(task);
+             const data = await this.create(dto, userId);
+            tasks.push(data);
         }
-        return this.taskRepo.save(tasks);
+        return tasks;
     }
 
     // Update Task
@@ -228,7 +288,7 @@ export class TaskService {
     async findByUser(userId: string) {
         const user = await this.getUserOrFail(userId);
         const data = await this.taskRepo.find({
-            where: { assignedTo: {id: user.id} },
+            where: { assignedTo: { id: user.id } },
             relations: ['project', 'assignedTo'],
         });
         return data;
