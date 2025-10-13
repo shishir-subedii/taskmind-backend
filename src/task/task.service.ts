@@ -8,6 +8,8 @@ import { Project } from 'src/project/entities/project.entity';
 import { User } from 'src/user/entity/user.entity';
 import { TaskStatus } from 'src/common/enums/task-status.enum';
 import { UserRole } from 'src/common/enums/auth-roles.enum';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 
 @Injectable()
 export class TaskService {
@@ -18,6 +20,7 @@ export class TaskService {
         private readonly projectRepo: Repository<Project>,
         @InjectRepository(User)
         private readonly userRepo: Repository<User>,
+        @InjectQueue('mail-queue') private readonly mailQueue: Queue,
     ) { }
 
     // Utility: Fetch user or fail
@@ -79,10 +82,7 @@ export class TaskService {
         if (user.role === UserRole.MANAGER) {
             this.verifyManagerOfProject(user, project);
         }
-        console.log('user', user);
-        console.log('dto.assignedToId', dto.assignedToId);
 
-        //BUG: here
         let assignedUser: User | null = null;
         if (dto.assignedToId) {
             assignedUser = await this.getUserOrFail(dto.assignedToId);
@@ -100,6 +100,15 @@ export class TaskService {
             assignedAt: assignedUser ? new Date() : null,
             deadline: dto.deadline ? new Date(dto.deadline) : null,
         });
+
+        if (assignedUser) {
+            // Enqueue email job
+            await this.mailQueue.add('send-task-assignment-email', {
+                userEmail: assignedUser.email,
+                subject: `Task Assigned: ${task.title}`,
+                content: `You have been assigned a new task: ${task.title}. Please check your dashboard for more details.`,
+            });
+        }
 
         return this.taskRepo.save(task);
     }
@@ -120,6 +129,37 @@ export class TaskService {
         });
         if (!task) throw new NotFoundException('Task not found');
         return task;
+    }
+
+    //add multiple tasks. 
+    async createMultiple(dtos: CreateTaskDto[], userId: string) {
+        const user = await this.getUserOrFail(userId);
+        this.verifyManagerOrSuperAdmin(user);
+        const tasks: Task[] = [];
+
+        for (const dto of dtos) {
+            const project = await this.getProjectOrFail(dto.projectId);
+            if (user.role === UserRole.MANAGER) {
+                this.verifyManagerOfProject(user, project);
+            }
+            let assignedUser: User | null = null;
+            if (dto.assignedToId) {
+                assignedUser = await this.getUserOrFail(dto.assignedToId);
+                this.verifyMemberOfProject(assignedUser, project);
+            }
+            const task = this.taskRepo.create({
+                sNo: dto.sNo,
+                title: dto.title,
+                description: dto.description,
+                project,
+                assets: dto.assets ?? [],
+                assignedTo: assignedUser ?? null,
+                assignedAt: assignedUser ? new Date() : null,
+                deadline: dto.deadline ? new Date(dto.deadline) : null,
+            });
+            tasks.push(task);
+        }
+        return this.taskRepo.save(tasks);
     }
 
     // Update Task

@@ -7,6 +7,7 @@ import {
   Patch,
   Delete,
   UseGuards,
+  Req,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
 import { ProjectService } from './project.service';
@@ -37,6 +38,7 @@ export class ProjectController {
     }
   }
 
+  @Roles(UserRole.SUPERADMIN)
   @Get()
   @ApiOperation({ summary: 'Get all projects' })
   @ApiResponse({ status: 200, type: [Project] })
@@ -57,6 +59,19 @@ export class ProjectController {
     return{
       success: true,
       message: 'Project retrieved successfully',
+      data: res,
+    }
+  }
+
+  //find my projects
+  @Get('projects/my-projects')
+  @ApiOperation({ summary: 'Fetch my projects' })
+  @ApiResponse({ status: 200, description: 'List of my projects' })
+  async findMyProjects(@Req() req) {
+    const res = await  this.projectService.findMyProjects(req.user.id);
+    return{
+      success: true,
+      message: 'Projects retrieved successfully',
       data: res,
     }
   }

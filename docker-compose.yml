@@ -12,5 +12,15 @@ services:
     volumes:
       - pg-taskmind-v:/var/lib/postgresql/data
 
+  valkey:
+    image: valkey/valkey:7  # Use an official Valkey image
+    container_name: valkey-taskmind-container
+    restart: always
+    ports:
+      - '6379:6379'  # Map the default Valkey port (6379)
+    volumes:
+      - vk-taskmind-v:/data # Volume for persistent Valkey data
+
 volumes:
   pg-taskmind-v: 
+  vk-taskmind-v: # Define the new volume for Valkey
