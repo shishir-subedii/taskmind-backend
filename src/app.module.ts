@@ -13,6 +13,7 @@ import { ProjectModule } from './project/project.module';
 import { CoreModule } from './common/core/core.module';
 import { TaskModule } from './task/task.module';
 import { BullModule } from '@nestjs/bullmq';
+import { NotificationModule } from './notification/notification.module';
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { BullModule } from '@nestjs/bullmq';
     FileUploadModule,
     ProjectModule,
     TaskModule,
+    NotificationModule,
   ],
   providers: [
     {

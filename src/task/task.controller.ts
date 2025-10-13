@@ -165,7 +165,7 @@ export class TaskController {
   }
 
   // Clock in
-  @Post(':id/clock-in')
+  @Patch(':id/clock-in')
   @ApiOperation({ summary: 'Clock in to a task (assigned user only)' })
   @ApiParam({ name: 'id', type: 'string', description: 'Task ID (UUID)' })
   @ApiResponse({ status: 200, description: 'Clock-in recorded successfully' })
@@ -176,7 +176,7 @@ export class TaskController {
   }
 
   // Clock out
-  @Post(':id/clock-out')
+  @Patch(':id/clock-out')
   @ApiOperation({ summary: 'Clock out of a task (assigned user only)' })
   @ApiParam({ name: 'id', type: 'string', description: 'Task ID (UUID)' })
   @ApiResponse({ status: 200, description: 'Clock-out recorded successfully' })

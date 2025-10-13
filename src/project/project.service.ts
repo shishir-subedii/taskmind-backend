@@ -154,4 +154,14 @@ export class ProjectService {
     project.teamMembers = project.teamMembers.filter((m) => m.id !== user.id);
     return this.projectRepo.save(project);
   }
+
+  //find members of a project
+  async findMembers(projectId: string): Promise<User[]> {
+    const project = await this.projectRepo.findOne({
+      where: { id: projectId },
+      relations: ['teamMembers'],
+    });
+    if (!project) throw new NotFoundException('Project not found');
+    return project.teamMembers; 
+  }
 }
