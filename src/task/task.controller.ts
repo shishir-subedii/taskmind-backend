@@ -16,6 +16,7 @@ import {
   ApiParam,
   ApiBearerAuth,
   ApiQuery,
+  ApiBody,
 } from '@nestjs/swagger';
 import { TaskService } from './task.service';
 import { CreateTaskDto } from './dto/create-task.dto';
@@ -31,6 +32,39 @@ import { TaskStatus } from 'src/common/enums/task-status.enum';
 @Controller('tasks')
 export class TaskController {
   constructor(private readonly taskService: TaskService) { }
+
+  @Post('projects/:projectId/extract-tasks')
+  @ApiOperation({ summary: 'Extract tasks from manager text and create them' })
+  @ApiParam({ name: 'projectId', description: 'UUID of the project' })
+  @ApiBody({
+    description: 'Text from manager describing tasks',
+    schema: {
+      type: 'object',
+      properties: {
+        text: { type: 'string', example: 'Today John will work on login page...' },
+      },
+      required: ['text'],
+    },
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Tasks created successfully',
+    type: [CreateTaskDto],
+  })
+  @ApiResponse({ status: 403, description: 'Forbidden. User is not manager.' })
+  @UseGuards(JwtAuthGuard) // protect this endpoint
+  async extractAndCreateTasks(
+    @Param('projectId') projectId: string,
+    @Body('text') text: string,
+    @Req() req,
+  ) {
+    const res = await this.taskService.extractAndCreateTasks(text, projectId, req.user.id);
+    return {
+      success: true,
+      message: 'Tasks created successfully',
+      data: res,
+    };
+  }
 
   // Create a new task (Manager / SuperAdmin only)
   @Roles(UserRole.MANAGER, UserRole.SUPERADMIN)

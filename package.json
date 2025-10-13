@@ -21,6 +21,7 @@
     "seed": "ts-node -r tsconfig-paths/register src/database/seeder/index.ts"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@nestjs/bullmq": "^11.0.4",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.2",
@@ -41,6 +42,7 @@
     "multer": "^2.0.2",
     "mysql2": "^3.14.1",
     "nodemailer": "^7.0.6",
+    "ollama": "^0.6.0",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
     "pg": "^8.16.3",
