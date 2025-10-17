@@ -24,8 +24,8 @@ export class ProjectService {
       assets: dto.assets ?? null,
     });
 
-    if (dto.managerId) {
-      const manager = await this.userRepo.findOne({ where: { id: dto.managerId } });
+    if (dto.managerEmail) {
+      const manager = await this.userRepo.findOne({ where: { email: dto.managerEmail } });
       if (!manager) throw new NotFoundException(`Manager not found`);
       project.manager = manager;
     }
@@ -84,8 +84,8 @@ export class ProjectService {
   async update(id: string, dto: UpdateProjectDto): Promise<Project> {
     const project = await this.findOne(id);
 
-    if (dto.managerId) {
-      const manager = await this.userRepo.findOne({ where: { id: dto.managerId } });
+    if (dto.managerEmail) {
+      const manager = await this.userRepo.findOne({ where: { email: dto.managerEmail } });
       if (!manager) throw new NotFoundException(`Manager not found`);
       project.manager = manager;
     }

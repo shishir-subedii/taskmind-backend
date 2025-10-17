@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsOptional, IsArray, IsUUID, IsDateString } from 'class-validator';
+import { IsString, IsOptional, IsArray, IsUUID, IsDateString, IsEmail } from 'class-validator';
 
 export class CreateProjectDto {
     @ApiProperty({ example: 'AI Dashboard', description: 'Name of the project' })
@@ -30,8 +30,8 @@ export class CreateProjectDto {
         description: 'Manager user ID for this project',
     })
     @IsOptional()
-    @IsUUID()
-    managerId?: string;
+    @IsEmail()
+    managerEmail?: string;
 
     @ApiProperty({
         example: ['uuid1', 'uuid2'],
