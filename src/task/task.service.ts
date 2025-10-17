@@ -277,11 +277,15 @@ Output a JSON array like this and strict json no text or explanation. nothing ap
 
         if (user.role === UserRole.MANAGER) this.verifyManagerOfProject(user, project);
         if (user.role === UserRole.MEMBER) this.verifyMemberOfProject(user, project);
-
-        return this.taskRepo.find({
-            where: { project },
+        
+        const tasks = await this.taskRepo.find({
+            where: { project: { id: projectId } },
             relations: ['project', 'assignedTo'],
+            order: { createdAt: 'DESC' },
         });
+
+        console.log("Found tasks by project:", tasks);
+        return tasks;
     }
 
     // Find tasks by assigned user

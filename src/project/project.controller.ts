@@ -103,16 +103,16 @@ export class ProjectController {
   }
 
   @Roles(UserRole.SUPERADMIN)
-  @Patch(':projectId/assign-manager/:managerId')
+  @Patch(':projectId/assign-manager/:managerEmail')
   @ApiOperation({ summary: 'Assign a manager (user) to a project' })
   @ApiParam({ name: 'projectId', type: 'string' })
-  @ApiParam({ name: 'managerId', type: 'string' })
+  @ApiParam({ name: 'managerEmail', type: 'string' })
   @ApiResponse({ status: 200, description: 'Manager assigned successfully' })
   async assignManager(
     @Param('projectId') projectId: string,
-    @Param('managerId') managerId: string,
+    @Param('managerEmail') managerEmail: string,
   ) {
-    const res = await this.projectService.assignManager(projectId, managerId);
+    const res = await this.projectService.assignManager(projectId, managerEmail);
     return{
       success: true,
       message: 'Manager assigned successfully',
@@ -121,16 +121,16 @@ export class ProjectController {
   }
 
   @Roles(UserRole.SUPERADMIN)
-  @Patch(':projectId/add-member/:memberId')
+  @Patch(':projectId/add-member/:memberEmail')
   @ApiOperation({ summary: 'Add a member (user) to a project' })
   @ApiParam({ name: 'projectId', type: 'string' })
-  @ApiParam({ name: 'memberId', type: 'string' })
+  @ApiParam({ name: 'memberEmail', type: 'string' })
   @ApiResponse({ status: 200, description: 'Member added successfully' })
   async addMember(
     @Param('projectId') projectId: string,
-    @Param('memberId') memberId: string,
+    @Param('memberEmail') memberEmail: string,
   ) {
-    const res = await this.projectService.addMember(projectId, memberId);
+    const res = await this.projectService.addMember(projectId, memberEmail);
     return{
       success: true,
       message: 'Member added successfully',

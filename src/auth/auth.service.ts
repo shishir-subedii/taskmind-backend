@@ -11,13 +11,19 @@ import * as bcrypt from 'bcrypt';
 import { UserLoginDto } from './dto/UserLoginDto';
 import { changePasswordDto } from './dto/ChangePasswordDto';
 import { loginResponseType } from 'src/common/types/auth.types';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Project } from 'src/project/entities/project.entity';
+import { Repository } from 'typeorm';
+import { UserRole } from 'src/common/enums/auth-roles.enum';
 
 @Injectable()
 export class AuthService {
     constructor(
         @Inject(forwardRef(() => UserService))
         private userService: UserService,
-        private jwt: JwtService
+        private jwt: JwtService,
+        @InjectRepository(Project)
+        private projectRepo: Repository<Project>,
     ) { }
 
     async register(user: UserRegisterDto) {
@@ -53,12 +59,19 @@ export class AuthService {
             user.role,
         );
 
+        let project: Project | null = null;
         // Add the generated token to accessTokens list
         await this.userService.addAccessToken(user.email, accessToken);
+        if(user.role === UserRole.MANAGER){
+            project = await this.projectRepo.findOne({
+                where: { manager: { id: user.id } },
+            });
+        }
 
         return {
             accessToken,
             role: user.role,
+            projectId: user.role === UserRole.MANAGER && project ? project.id : null,
         };
     }
 

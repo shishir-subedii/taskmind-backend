@@ -1,6 +1,7 @@
 export type loginResponseType = {
     accessToken: string;
     role: string;
+    projectId?: string | null;
 }
 
 export type userPayloadType = {
