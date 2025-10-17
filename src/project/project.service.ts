@@ -106,25 +106,27 @@ export class ProjectService {
   }
 
 
-  async assignManager(projectId: string, managerId: string) {
+  async assignManager(projectId: string, managerEmail: string) {
     const project = await this.projectRepo.findOne({ where: { id: projectId } });
     if (!project) throw new NotFoundException('Project not found');
 
-    const user = await this.userRepo.findOne({ where: { id: managerId } });
+    const user = await this.userRepo.findOne({ where: { email: managerEmail } });
     if (!user) throw new NotFoundException('User not found');
+    user.role = UserRole.MANAGER;
+    await this.userRepo.save(user);
 
     project.manager = user;
     return this.projectRepo.save(project);
   }
 
-  async addMember(projectId: string, memberId: string) {
+  async addMember(projectId: string, memberEmail: string) {
     const project = await this.projectRepo.findOne({
       where: { id: projectId },
       relations: ['teamMembers'], // must load teamMembers to modify
     });
     if (!project) throw new NotFoundException('Project not found');
 
-    const user = await this.userRepo.findOne({ where: { id: memberId } });
+    const user = await this.userRepo.findOne({ where: { email: memberEmail } });
     if (!user) throw new NotFoundException('User not found');
 
     // Prevent duplicate additions

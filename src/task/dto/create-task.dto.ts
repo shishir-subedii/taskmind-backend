@@ -16,6 +16,7 @@ export class CreateTaskDto {
         description: 'Serial number of the task within the project',
     })
     @IsInt()
+    @IsOptional()
     sNo: number;
 
     @ApiProperty({ example: TaskPriority.MEDIUM, enum: TaskPriority })
