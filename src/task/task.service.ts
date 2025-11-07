@@ -89,7 +89,6 @@ Output a JSON array like this and strict json no text or explanation. nothing ap
 
 
         const raw = await this.askAI(prompt);
-        console.log("AI Response:", raw);
         const jsonMatch = raw.match(/\[.*\]/s);
         if (!jsonMatch) return [];
         return JSON.parse(jsonMatch[0]);
@@ -102,7 +101,6 @@ Output a JSON array like this and strict json no text or explanation. nothing ap
         this.verifyManagerOfProject(user, project);
 
         const dtos = await this.extractTasks(text, projectId);
-        console.log("Extracted DTOs:", dtos);
         return this.createMultiple(dtos, userId);
     }
 
@@ -169,7 +167,6 @@ Output a JSON array like this and strict json no text or explanation. nothing ap
             assignedUser = await this.getUserOrFail(dto.assignedToId);
             this.verifyMemberOfProject(assignedUser, project);
         }
-        console.log("Creating task with DTO:", dto, "Assigned User:", assignedUser);
 
         const task = this.taskRepo.create({
             sNo: dto.sNo,
@@ -216,7 +213,6 @@ Output a JSON array like this and strict json no text or explanation. nothing ap
 
     //add multiple tasks. 
     async createMultiple(dtos: CreateTaskDto[], userId: string) {
-        console.log("Creating multiple tasks:", dtos);
         let tasks: Task[] = [];
         for (const dto of dtos) {
              const data = await this.create(dto, userId);
@@ -284,7 +280,6 @@ Output a JSON array like this and strict json no text or explanation. nothing ap
             order: { createdAt: 'DESC' },
         });
 
-        console.log("Found tasks by project:", tasks);
         return tasks;
     }
 

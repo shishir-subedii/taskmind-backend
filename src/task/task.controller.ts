@@ -97,7 +97,6 @@ export class TaskController {
   @ApiResponse({ status: 200, description: 'List of tasks assigned to the user' })
   async findMyTasks(@Req() req) {
     const userId = req.user.id;
-    console.log("User ID:", userId); // Debug log
     const data = await this.taskService.findByUser(userId);
     return { success: true, message: 'Tasks fetched successfully', data };
   }
